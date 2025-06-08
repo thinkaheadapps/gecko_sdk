@@ -154,6 +154,7 @@ class CliProcessor(cmd.Cmd):
         self.arg_script()
         self.arg_update_complete()
         self.arg_verbosity()
+        self.arg_send_string()
 
         # LED control defaults
         self.led_pattern = bytearray(LED_DEFAULT_PATTERN)
@@ -855,10 +856,12 @@ class CliProcessor(cmd.Cmd):
         esl_id = arg.esl_id
         if arg.image_index in range(0, 256):
             image_idx = arg.image_index
-        else: self.log.warning("Image index must be between 0 and 255")
+        else:
+            self.log.warning("Image index must be between 0 and 255")
         if arg.image_index in range(0, 256):
             display_idx = arg.display_index
-        else: self.log.warning("Display index must be between 0 and 255")
+        else:
+            self.log.warning("Display index must be between 0 and 255")
         group_id = arg.group_id
         if arg.time:
             set_date_input_time = arg.time
@@ -1112,7 +1115,8 @@ class CliProcessor(cmd.Cmd):
         """
         if arg.rssi < 0:
             self.ap.ap_set_rssi_threshold(int(arg.rssi))
-        else: self.log.error("Invalid RSSI parameter, only negative integers are allowed")
+        else:
+            self.log.error("Invalid RSSI parameter, only negative integers are allowed")
 
 
     def precmd(self, command):
@@ -1279,3 +1283,22 @@ class CliProcessor(cmd.Cmd):
     def emptyline(self):
         # Do nothing in case of empty command input
         pass
+
+    def arg_send_string(self):
+        parser_send_string = self.subparsers.add_parser('send_string',
+            help='Send a string message to an ESL tag via the control point',
+            description=self.do_send_string.__doc__)
+        parser_send_string.add_argument('message', type=str, help='The string message to send to the tag.')
+        parser_send_string.add_argument('address', metavar='[address]', type=address_type, help='Bluetooth address of the target device or ESL ID.')
+
+    def do_send_string(self, arg):
+        '''Send a string message to an ESL tag via the control point.\n\nExamples:\n  send_string "Hello ESL!" C0:98:E5:49:00:01\n'''
+        tag = self.get_tag_by_address(arg.address)
+        if tag is None:
+            print(f"No tag found with address {arg.address}")
+            return
+        try:
+            tag.write_control_point(arg.message.encode('utf-8'))
+            print(f"Sent string to tag {arg.address}: {arg.message}")
+        except Exception as e:
+            print(f"Failed to send string: {e}")
